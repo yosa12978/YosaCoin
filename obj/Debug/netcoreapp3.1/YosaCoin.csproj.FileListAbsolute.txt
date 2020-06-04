@@ -1,0 +1,15 @@
+D:\App's\YosaCoin\YosaCoin\bin\Debug\netcoreapp3.1\YosaCoin.exe
+D:\App's\YosaCoin\YosaCoin\bin\Debug\netcoreapp3.1\YosaCoin.deps.json
+D:\App's\YosaCoin\YosaCoin\bin\Debug\netcoreapp3.1\YosaCoin.runtimeconfig.json
+D:\App's\YosaCoin\YosaCoin\bin\Debug\netcoreapp3.1\YosaCoin.runtimeconfig.dev.json
+D:\App's\YosaCoin\YosaCoin\bin\Debug\netcoreapp3.1\YosaCoin.dll
+D:\App's\YosaCoin\YosaCoin\bin\Debug\netcoreapp3.1\YosaCoin.pdb
+D:\App's\YosaCoin\YosaCoin\bin\Debug\netcoreapp3.1\Newtonsoft.Json.dll
+D:\App's\YosaCoin\YosaCoin\obj\Debug\netcoreapp3.1\YosaCoin.csprojAssemblyReference.cache
+D:\App's\YosaCoin\YosaCoin\obj\Debug\netcoreapp3.1\YosaCoin.csproj.CoreCompileInputs.cache
+D:\App's\YosaCoin\YosaCoin\obj\Debug\netcoreapp3.1\YosaCoin.AssemblyInfoInputs.cache
+D:\App's\YosaCoin\YosaCoin\obj\Debug\netcoreapp3.1\YosaCoin.AssemblyInfo.cs
+D:\App's\YosaCoin\YosaCoin\obj\Debug\netcoreapp3.1\YosaCoin.csproj.CopyComplete
+D:\App's\YosaCoin\YosaCoin\obj\Debug\netcoreapp3.1\YosaCoin.dll
+D:\App's\YosaCoin\YosaCoin\obj\Debug\netcoreapp3.1\YosaCoin.pdb
+D:\App's\YosaCoin\YosaCoin\obj\Debug\netcoreapp3.1\YosaCoin.genruntimeconfig.cache
