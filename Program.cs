@@ -79,6 +79,26 @@ namespace YosaCoin
             }
             return true;
         }
+
+        public double GetBalance(string name) {
+
+            double balance = 0;
+            double spending = 0;
+            double income = 0;
+            foreach (Block block in Chain)
+            {
+                var transaction = block.data;
+                var sender = transaction.sender;
+                var receiver = transaction.receiver;
+                if (name == sender)
+                    spending += transaction.amount;                    
+                if (name == receiver)
+                    income += transaction.amount;
+                balance = income - spending;
+            }
+            return balance;
+        }
+        
     }
 
     class Program
@@ -90,6 +110,12 @@ namespace YosaCoin
             yosaCoin.AddBlock( new Block(DateTime.Now, null, new Transaction {sender = "yosa", receiver = "falcon", amount = 1} ));
             yosaCoin.AddBlock( new Block(DateTime.Now, null, new Transaction {sender = "yosa", receiver = "falcon", amount = 2} ));
             yosaCoin.AddBlock( new Block(DateTime.Now, null, new Transaction {sender = "yosa", receiver = "falcon", amount = 3} ));
+            yosaCoin.AddBlock( new Block(DateTime.Now, null, new Transaction {sender = "falcon", receiver = "yosa", amount = 3} ));
+            yosaCoin.AddBlock( new Block(DateTime.Now, null, new Transaction {sender = "yosa", receiver = "falcon", amount = 3} ));
+            yosaCoin.AddBlock( new Block(DateTime.Now, null, new Transaction {sender = "yosa", receiver = "falcon", amount = 3} ));
+
+
+            Console.WriteLine(yosaCoin.GetBalance("falcon"));
 
             Console.WriteLine(JsonConvert.SerializeObject(yosaCoin));
         }
