@@ -5,145 +5,73 @@ using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
 using Newtonsoft.Json;
+using System.Net.Sockets;
+using System.Threading;
+using System.Net;
+
 
 namespace YosaCoin
 {
-    public class Transaction
+    public class Program
     {
-        public string sender { get; set; }
-        public string receiver { get; set; }
-        public int amount { get; set; }
+        public static string username;
+        public static BlockChain yosaCoin;
+        public static int prt;
+        public static string Addr;
+        public static PeerServer Server = null;
+        public static PeerClient Client = new PeerClient();
+        public static bool is_Active = true;
 
-        public override string ToString()
+        static void draw_menu()
         {
-            return $"sender: {sender}, receiver: {receiver}, amount: {amount}";
+            Console.Title = "YosaCoin CLI";
+            ConsoleColor classic_console_color = Console.ForegroundColor;
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("\n  ll      ll   llllllll    lllllll     llllllll    ||    llllllll   lllllllll   ll  ll      ll ");
+            Console.WriteLine("   ll    ll   ll      ll  ll          ll      ll   ||   ll         ll       ll      llll    ll ");
+            Console.WriteLine("    ll  ll    ll      ll  ll          ll      ll   ||   ll         ll       ll  ll  ll ll   ll ");
+            Console.WriteLine("     llll     ll      ll   llllllll   llllllllll   ||   ll         ll       ll  ll  ll  ll  ll ");
+            Console.WriteLine("      ll      ll      ll          ll  ll      ll   ||   ll         ll       ll  ll  ll   ll ll ");
+            Console.WriteLine("      ll      ll      ll          ll  ll      ll   ||   ll         ll       ll  ll  ll    llll ");
+            Console.WriteLine("      ll       llllllll    llllllll   ll      ll   ||    llllllll   lllllllll   ll  ll     lll\n ");
+            Console.ForegroundColor = classic_console_color;
+            Console.WriteLine($"\nWelcome {username}");
+            Console.WriteLine($"Balance: {yosaCoin.GetBalance(username)} YosaCoin's\n");
+
+            Console.WriteLine($"Current listening host: {Addr}");
+            Console.WriteLine($"Current listening port: {prt}");
+
+
+            Console.Write("\n[MAIN MENU]\n1.Get Blockchain\n2.Send Coins\n3.Mine Coins\n4.Exit\n");
+
         }
-    }
-    public class Block
-    {
-        public int id { get; set; }
-        public DateTime timestamp { get; set; }  
-        public string previousHash { get; set; }  
-        public string hash { get; set; }  
-        public Transaction data { get; set; }  
-        public long nonce { get; private set; } 
 
-        public Block(DateTime timestamp, string previousHash, Transaction data)
+        private static void SendMessage(Block send_data, string remoteAddress, int remotePort)
         {
-            id = 0;
-            this.timestamp = timestamp;
-            this.previousHash = previousHash;
-            this.data = data;
-            hash = ComputeHash();
+            UdpClient client = new UdpClient();
+            byte[] data = Encoding.Unicode.GetBytes(JsonConvert.SerializeObject(send_data));
+            client.Send(data, data.Length, remoteAddress, remotePort);
         }
-
-        public string ComputeHash()  
-        {  
-            SHA256 sha256Hash = SHA256.Create();
-            byte[] bytes = sha256Hash.ComputeHash(Encoding.UTF8.GetBytes($"{timestamp}-{previousHash ?? ""}-{JsonConvert.SerializeObject(data)}-{nonce}"));  
-            StringBuilder builder = new StringBuilder();  
-            for (int i = 0; i < bytes.Length; i++)  
-                builder.Append(bytes[i].ToString("x2"));  
-            return builder.ToString();   
-        } 
-
-        public void MineBlock(int proofOfWorkDifficulty)
+ 
+        private static void ReceiveMessage()
         {
-            string hashValidationTemplate = new String('0', proofOfWorkDifficulty);
-            while (hash.Substring(0, proofOfWorkDifficulty) != hashValidationTemplate)
+            is_Active = true;
+            UdpClient client = new UdpClient(prt);
+            IPEndPoint remoteIp = null;
+            while(is_Active)
             {
-                nonce++;
-                hash = ComputeHash();
-            }   
-            Console.WriteLine($"Block with hash = {hash} nonce = {nonce}  successfully mined!");
-        }
-    }
-
-    public class BlockChain
-    {
-        public List<Block> Chain { get; set; }
-
-        public BlockChain()
-        {
-            Chain = new List<Block>();
-            Chain.Add( new Block(DateTime.Now, null, new Transaction()) );
-        }
-
-        public Block getLatest()
-        {
-            return Chain[Chain.Count - 1];
-        }
-
-        public void AddBlock(Block block)
-        {
-            Block latestBlock = getLatest();
-            block.id = latestBlock.id + 1;
-            block.previousHash = latestBlock.hash;
-            block.hash = block.ComputeHash();
-            Chain.Add(block);
-        }
-
-        public bool isValid()
-        {
-            for(int i = 1; i < Chain.Count; i++)
-            {
-                Block current = Chain[i];
-                Block previous = Chain[i-1];
-                if(current.hash != current.ComputeHash())
-                    return false;
-                if(current.previousHash != previous.ComputeHash())
-                    return false;
+                byte[] data = client.Receive(ref remoteIp);
+                string message = Encoding.Unicode.GetString(data);
+                Block block = JsonConvert.DeserializeObject<Block>(message);
+                block.previousHash = yosaCoin.getLatest().hash;
+                Program.yosaCoin.AddBlock(block);
             }
-            return true;
         }
 
-        public double GetBalance(string name) {
-
-            double balance = 0;
-            double spending = 0;
-            double income = 0;
-            foreach (Block block in Chain)
-            {
-                // foreach(Transaction transactions in block.data)
-                // {
-                var transaction =block.data; // transactions;
-                var sender = transaction.sender;
-                var receiver = transaction.receiver;
-                if (name == sender)
-                    spending += transaction.amount;                    
-                if (name == receiver)
-                    income += transaction.amount;
-                balance = income - spending;
-                // }
-            }
-            return balance;
-        }
-        
-        public bool isBlockValid(int id)
-        {
-            Block currentBlock = Chain.FirstOrDefault(m => m.id == id);
-            Block previousBlock = Chain.FirstOrDefault(m => m.id == id-1);
-            if(currentBlock.hash != currentBlock.ComputeHash())
-                return false;
-            if(currentBlock.previousHash != previousBlock.hash)
-                return false;
-            return true;
-        }
-
-        public void MineBlock(string username)
-        {
-            Transaction minerRewardTransaction = new Transaction { sender = null, receiver = username, amount = 1};
-            Block block = new Block(DateTime.Now, Chain[Chain.Count-1].hash, minerRewardTransaction);
-            block.MineBlock(5);
-            Chain.Add(block);
-        }
-    }
-
-    class Program
-    {
         static void Main(string[] args)
         {
             Console.Clear();
+            
             Console.Title = "YosaCoin CLI";
             ConsoleColor classic_console_color = Console.ForegroundColor;
             Console.ForegroundColor = ConsoleColor.Yellow;
@@ -156,29 +84,91 @@ namespace YosaCoin
             Console.WriteLine("      ll       llllllll    llllllll   ll      ll   ||    llllllll   lllllllll   ll  ll     lll\n ");
             Console.ForegroundColor = classic_console_color;
 
+            Console.Write("Enter your username: ");
+            username = Console.ReadLine();
+            Console.Write("Current listening host: ");
+            Addr = Console.ReadLine();
+            Console.Write("Current listening port: ");
+            prt = int.Parse(Console.ReadLine());
 
+            Thread receiveThread = new Thread(new ThreadStart(ReceiveMessage));
+            receiveThread.Start();
 
-            BlockChain yosaCoin = new BlockChain();
+            Console.Clear();
+
             
-            // yosaCoin.AddBlock( new Block(DateTime.Now, null, new Transaction[] { new Transaction {sender = "yosa", receiver = "falcon", amount = 1} }));
-            // yosaCoin.AddBlock( new Block(DateTime.Now, null, new Transaction[] { new Transaction {sender = "yosa", receiver = "falcon", amount = 2} }));
-            // yosaCoin.AddBlock( new Block(DateTime.Now, null, new Transaction[] { new Transaction {sender = "yosa", receiver = "falcon", amount = 3} }));
-            // yosaCoin.AddBlock( new Block(DateTime.Now, null, new Transaction[] { new Transaction {sender = "falcon", receiver = "yosa", amount = 3} }));
-            // yosaCoin.AddBlock( new Block(DateTime.Now, null, new Transaction[] { new Transaction {sender = "yosa", receiver = "falcon", amount = 3} }));
-            // yosaCoin.AddBlock( new Block(DateTime.Now, null, new Transaction[] { new Transaction {sender = "yosa", receiver = "falcon", amount = 3} }));
+            yosaCoin = new BlockChain();
 
-            string username = "falcon";
-            Console.WriteLine($"Welcome, {username}!\n");
-            for (int i = 0; i < 3; i++)
+            draw_menu();
+
+            while(true)
             {
-                yosaCoin.MineBlock(username);    
+
+                Console.Write("Option: ");
+                int choice;
+                try
+                {
+                    choice = int.Parse(Console.ReadLine());
+                }catch
+                {
+                    Console.Write("Press ENTER to continue...");
+                    Console.ReadKey();
+                    Console.Clear();
+                    draw_menu();
+                    continue;
+                }
+                if(choice == 1)
+                {
+                    Console.WriteLine(JsonConvert.SerializeObject(yosaCoin, Formatting.Indented));
+                }
+                else if(choice == 2)
+                {
+                    Console.Write("Enter the remote host: ");
+                    string serverhost = Console.ReadLine();
+                    Console.Write("Enter the remote port: ");
+                    int serverport = int.Parse(Console.ReadLine());
+                    Console.Write("Enter Amount: ");
+                    int amount = int.Parse(Console.ReadLine());
+                    Console.Write("Enter the receiver username: ");
+                    string receiver = Console.ReadLine();
+
+                    //List<Transaction> transactions = new List<Transaction> {new Transaction { sender = username, receiver = receiver, amount = amount }};
+                    yosaCoin.CreateTransaction(new Transaction { sender = username, receiver = receiver, amount = amount });
+                    Block newblock = new Block(DateTime.Now, yosaCoin.getLatest().hash, yosaCoin.PendingTransactions);
+                    SendMessage(newblock, serverhost, serverport);
+                    yosaCoin.AddBlock(newblock);
+                    yosaCoin.PendingTransactions = new List<Transaction>();
+                    
+                }
+                else if(choice == 3)
+                {
+                    Console.Write("Coins count: ");
+                    int coinscount = int.Parse(Console.ReadLine());
+                    for(int i = 0; i < coinscount; i++)
+                        yosaCoin.MineBlock(username);
+                }
+                else if(choice == 4)
+                {
+                    is_Active = false;
+                    break;
+                }
+                Console.Write("Press ENTER to continue...");
+                Console.ReadKey();
+                Console.Clear();
+                draw_menu();
             }
 
-            Console.WriteLine($"Balance: {yosaCoin.GetBalance(username)} YosaCoin's\n");
-            Console.WriteLine(!yosaCoin.isValid() ? "One block isn't valid!" : "All blocks is valid!");
+            // Console.WriteLine($"Welcome, {username}!\n");
+            // for (int i = 0; i < 3; i++)
+            // {
+            //     yosaCoin.MineBlock(username);    
+            // }
 
-            Console.WriteLine(JsonConvert.SerializeObject(yosaCoin, Formatting.Indented));
-            Console.ReadKey();
+            // Console.WriteLine($"Balance: {yosaCoin.GetBalance(username)} YosaCoin's\n");
+            // Console.WriteLine(!yosaCoin.isValid() ? "One block isn't valid!" : "All blocks is valid!");
+
+            // Console.WriteLine(JsonConvert.SerializeObject(yosaCoin, Formatting.Indented));
+            // Console.ReadKey();
         }
     }
 }

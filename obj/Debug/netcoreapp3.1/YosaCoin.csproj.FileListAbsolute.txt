@@ -13,3 +13,4 @@ D:\App's\YosaCoin\YosaCoin\obj\Debug\netcoreapp3.1\YosaCoin.csproj.CopyComplete
 D:\App's\YosaCoin\YosaCoin\obj\Debug\netcoreapp3.1\YosaCoin.dll
 D:\App's\YosaCoin\YosaCoin\obj\Debug\netcoreapp3.1\YosaCoin.pdb
 D:\App's\YosaCoin\YosaCoin\obj\Debug\netcoreapp3.1\YosaCoin.genruntimeconfig.cache
+D:\App's\YosaCoin\YosaCoin\bin\Debug\netcoreapp3.1\websocket-sharp.dll
