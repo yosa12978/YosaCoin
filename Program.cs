@@ -6,7 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Newtonsoft.Json;
 using System.Net.Sockets;
-using System.Threading;
+using System.Threading.Tasks;
 using System.Net;
 
 
@@ -21,6 +21,7 @@ namespace YosaCoin
         public static PeerServer Server = null;
         public static PeerClient Client = new PeerClient();
         public static bool is_Active = true;
+        static bool chainSynched = false;
 
         static void draw_menu()
         {
@@ -38,15 +39,15 @@ namespace YosaCoin
             Console.WriteLine($"\nWelcome {username}");
             Console.WriteLine($"Balance: {yosaCoin.GetBalance(username)} YosaCoin's\n");
 
-            Console.WriteLine($"Current listening host: {Addr}");
-            Console.WriteLine($"Current listening port: {prt}");
+            // Console.WriteLine($"Current listening host: {Addr}");
+            // Console.WriteLine($"Current listening port: {prt}");
 
 
-            Console.Write("\n[MAIN MENU]\n1.Get Blockchain\n2.Send Coins\n3.Mine Coins\n4.Exit\n");
+            Console.Write("\n[MAIN MENU]\n1.Get Blockchain\n2.Create Transaction\n3.Mine Coins\n4.Exit\n");
 
         }
 
-        private static void SendMessage(Block send_data, string remoteAddress, int remotePort)
+        private static void SendMessage(BlockChain send_data, string remoteAddress, int remotePort)
         {
             UdpClient client = new UdpClient();
             byte[] data = Encoding.Unicode.GetBytes(JsonConvert.SerializeObject(send_data));
@@ -55,16 +56,36 @@ namespace YosaCoin
  
         private static void ReceiveMessage()
         {
-            is_Active = true;
             UdpClient client = new UdpClient(prt);
             IPEndPoint remoteIp = null;
             while(is_Active)
             {
                 byte[] data = client.Receive(ref remoteIp);
                 string message = Encoding.Unicode.GetString(data);
-                Block block = JsonConvert.DeserializeObject<Block>(message);
-                block.previousHash = yosaCoin.getLatest().hash;
-                Program.yosaCoin.AddBlock(block);
+                BlockChain chain = JsonConvert.DeserializeObject<BlockChain>(message);
+
+                if (chain.isValid() && chain.Chain.Count > yosaCoin.Chain.Count)
+                {
+                    Console.WriteLine("I AM HERE!");
+                    List<Transaction> newTransactions = new List<Transaction>();
+                    newTransactions.AddRange(chain.PendingTransactions);
+                    newTransactions.AddRange(yosaCoin.PendingTransactions);
+
+                    chain.PendingTransactions = newTransactions;
+                    yosaCoin = chain;
+                }
+
+                // if (!chainSynched)
+                // {
+                //     try
+                //     {
+                //         SendMessage(yosaCoin, remoteIp.Address.ToString(), remoteIp.Port);
+                //     }catch(SocketException e)
+                //     {
+                //         Console.WriteLine(e.Message);
+                //     }
+                //     chainSynched = true;
+                // }
             }
         }
 
@@ -86,18 +107,43 @@ namespace YosaCoin
 
             Console.Write("Enter your username: ");
             username = Console.ReadLine();
-            Console.Write("Current listening host: ");
-            Addr = Console.ReadLine();
-            Console.Write("Current listening port: ");
-            prt = int.Parse(Console.ReadLine());
+            // Console.Write("Current listening host: ");
+            // Addr = Console.ReadLine();
+            // Console.Write("Current listening port: ");
+            // prt = int.Parse(Console.ReadLine());
 
-            Thread receiveThread = new Thread(new ThreadStart(ReceiveMessage));
-            receiveThread.Start();
+            yosaCoin = new BlockChain();
+
+
+            int PORT = 9876;
+            UdpClient udpClient = new UdpClient();
+            udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+            udpClient.ExclusiveAddressUse = false;
+            udpClient.Client.Bind(new IPEndPoint(IPAddress.Any, PORT));
+
+            var from = new IPEndPoint(0, 0);
+            Task.Run(() =>
+            {
+                while (is_Active)
+                {
+                    var recvBuffer = udpClient.Receive(ref from);
+                    var message = Encoding.UTF8.GetString(recvBuffer);
+                    BlockChain chain = JsonConvert.DeserializeObject<BlockChain>(message);
+                    // Блокчейн chain ПОСТОЯННО не валидна
+                    // так как создаётся 2 генезиз блока
+                    if (chain.isValid() && chain.Chain.Count > yosaCoin.Chain.Count)
+                    {
+                        List<Transaction> newTransactions = new List<Transaction>();
+                        newTransactions.AddRange(chain.PendingTransactions);
+                        newTransactions.AddRange(yosaCoin.PendingTransactions);
+
+                        chain.PendingTransactions = newTransactions;
+                        yosaCoin = chain;
+                    }    
+                }
+            });
 
             Console.Clear();
-
-            
-            yosaCoin = new BlockChain();
 
             draw_menu();
 
@@ -123,22 +169,19 @@ namespace YosaCoin
                 }
                 else if(choice == 2)
                 {
-                    Console.Write("Enter the remote host: ");
-                    string serverhost = Console.ReadLine();
-                    Console.Write("Enter the remote port: ");
-                    int serverport = int.Parse(Console.ReadLine());
+                    // Console.Write("Enter the remote host: ");
+                    // string serverhost = Console.ReadLine();
+                    // Console.Write("Enter the remote port: ");
+                    // int serverport = int.Parse(Console.ReadLine());
                     Console.Write("Enter Amount: ");
-                    int amount = int.Parse(Console.ReadLine());
+                    uint amount = uint.Parse(Console.ReadLine());
                     Console.Write("Enter the receiver username: ");
                     string receiver = Console.ReadLine();
 
-                    //List<Transaction> transactions = new List<Transaction> {new Transaction { sender = username, receiver = receiver, amount = amount }};
                     yosaCoin.CreateTransaction(new Transaction { sender = username, receiver = receiver, amount = amount });
-                    Block newblock = new Block(DateTime.Now, yosaCoin.getLatest().hash, yosaCoin.PendingTransactions);
-                    SendMessage(newblock, serverhost, serverport);
-                    yosaCoin.AddBlock(newblock);
-                    yosaCoin.PendingTransactions = new List<Transaction>();
-                    
+                    yosaCoin.ProcessPendingTransactions(username);
+                    var data = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(yosaCoin));
+                    udpClient.Send(data, data.Length, "192.168.0.255", PORT);
                 }
                 else if(choice == 3)
                 {
@@ -157,18 +200,6 @@ namespace YosaCoin
                 Console.Clear();
                 draw_menu();
             }
-
-            // Console.WriteLine($"Welcome, {username}!\n");
-            // for (int i = 0; i < 3; i++)
-            // {
-            //     yosaCoin.MineBlock(username);    
-            // }
-
-            // Console.WriteLine($"Balance: {yosaCoin.GetBalance(username)} YosaCoin's\n");
-            // Console.WriteLine(!yosaCoin.isValid() ? "One block isn't valid!" : "All blocks is valid!");
-
-            // Console.WriteLine(JsonConvert.SerializeObject(yosaCoin, Formatting.Indented));
-            // Console.ReadKey();
         }
     }
 }

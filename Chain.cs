@@ -9,7 +9,6 @@ namespace YosaCoin
 {
     public class BlockChain
     {
-        public int id {get;set;}
         public List<Block> Chain { get; set; }
         public List<Transaction> PendingTransactions = new List<Transaction>();
 
@@ -87,11 +86,12 @@ namespace YosaCoin
             PendingTransactions.Add(transaction);
         }
 
-        public void ProcessPendingTransactions()
+        public void ProcessPendingTransactions(string minerAddress)
         {
             Block block = new Block(DateTime.Now, Chain.Last().hash, PendingTransactions);
             AddBlock(block);
             PendingTransactions = new List<Transaction>();
+            CreateTransaction(new Transaction{ sender = null, receiver = minerAddress, amount = 1 });  
         }
     }
 }

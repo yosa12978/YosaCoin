@@ -3,11 +3,13 @@ using System.Text;
 using Newtonsoft.Json;
 using WebSocketSharp;
 using WebSocketSharp.Server;
+using System.Collections.Generic;
 
 namespace YosaCoin
 {
   public class PeerServer: WebSocketBehavior
     {
+        bool chainSynched = false;
         WebSocketServer wss = null;
 
         public void Start()
@@ -26,12 +28,23 @@ namespace YosaCoin
             }
             else
             {
-                Block block = JsonConvert.DeserializeObject<Block>(e.Data);
-                block.previousHash = Program.yosaCoin.getLatest().hash;
-                foreach(Transaction transaction in block.data)
-                    transaction.receiver = Program.username;
-                Program.yosaCoin.AddBlock(block);
-                Start();
+                BlockChain chain = JsonConvert.DeserializeObject<BlockChain>(e.Data);
+
+                if (chain.isValid() && chain.Chain.Count > Program.yosaCoin.Chain.Count)
+                {
+                    List<Transaction> newTransactions = new List<Transaction>();
+                    newTransactions.AddRange(chain.PendingTransactions);
+                    newTransactions.AddRange(Program.yosaCoin.PendingTransactions);
+
+                    chain.PendingTransactions = newTransactions;
+                    Program.yosaCoin = chain;
+                }
+
+                if (!chainSynched)
+                {
+                    Send(JsonConvert.SerializeObject(Program.yosaCoin));
+                    chainSynched = true;
+                }
             }
         }
     }

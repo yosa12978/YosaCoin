@@ -11,7 +11,7 @@ namespace YosaCoin
     {
         public string sender { get; set; }
         public string receiver { get; set; }
-        public int amount { get; set; }
+        public uint amount { get; set; }
 
         public override string ToString()
         {

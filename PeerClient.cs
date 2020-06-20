@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using WebSocketSharp;
+using YosaCoin;
 
 namespace YosaCoin
 {
@@ -10,7 +11,7 @@ namespace YosaCoin
     {
         IDictionary<string, WebSocket> wsDict = new Dictionary<string, WebSocket>();
 
-        public void Connect(string url, Block newblock)
+        public void Connect(string url)
         {
             if (!wsDict.ContainsKey(url))
             {
@@ -21,13 +22,21 @@ namespace YosaCoin
                         Console.WriteLine(e.Data);
                     else
                     {
-                        Block block = JsonConvert.DeserializeObject<Block>(e.Data);
-                        Program.yosaCoin.AddBlock(block);
+                        BlockChain newChain = JsonConvert.DeserializeObject<BlockChain>(e.Data);
+                        if (newChain.isValid() && newChain.Chain.Count > Program.yosaCoin.Chain.Count)
+                        {
+                            List<Transaction> newTransactions = new List<Transaction>();
+                            newTransactions.AddRange(newChain.PendingTransactions);
+                            newTransactions.AddRange(Program.yosaCoin.PendingTransactions);
+
+                            newChain.PendingTransactions = newTransactions;
+                            Program.yosaCoin = newChain;
+                        }
                     }
                 };
                 ws.Connect();
                 ws.Send("Client_Connected");
-                ws.Send(JsonConvert.SerializeObject(newblock));
+                ws.Send(JsonConvert.SerializeObject(Program.yosaCoin));
                 wsDict.Add(url, ws);
             }
         }
