@@ -14,7 +14,7 @@ namespace YosaCoin
         public string previousHash { get; set; }  
         public string hash { get; set; }  
         public List<Transaction> data { get; set; }  
-        public long nonce { get; private set; } 
+        public long nonce { get; set; } 
 
         public Block(DateTime timestamp, string previousHash, List<Transaction> data)
         {

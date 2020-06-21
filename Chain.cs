@@ -14,10 +14,10 @@ namespace YosaCoin
 
         public BlockChain()
         {
-            InitializeChain();
+            //InitializeChain();
         }
 
-        private void InitializeChain()
+        public void InitializeChain()
         {
             Chain = new List<Block>();
             Chain.Add( new Block(DateTime.Now, null, new List<Transaction>{}) );
